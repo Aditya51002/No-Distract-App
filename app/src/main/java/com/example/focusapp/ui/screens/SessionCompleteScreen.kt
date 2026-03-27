@@ -1,0 +1,73 @@
+package com.example.focusapp.ui.screens
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import com.example.focusapp.ui.components.CustomButton
+import com.example.focusapp.ui.theme.*
+
+@Composable
+fun SessionCompleteScreen(
+    onGoHome: () -> Unit,
+    onStartAgain: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(DarkBackground)
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.CheckCircle,
+            contentDescription = null,
+            tint = Color(0xFF4CAF50),
+            modifier = Modifier.size(100.dp)
+        )
+        
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        Text(
+            text = "🎉 Session Completed!",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = TextPrimary
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "You've successfully focused for 25 minutes.\nYour streak is now 6 days!",
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center,
+            color = TextSecondary
+        )
+        
+        Spacer(modifier = Modifier.height(64.dp))
+        
+        CustomButton(
+            text = "Start Another Session",
+            onClick = onStartAgain,
+            containerColor = PrimaryNeon
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        TextButton(
+            onClick = onGoHome,
+            modifier = Modifier.height(56.dp).fillMaxWidth()
+        ) {
+            Text("Go to Dashboard", color = TextSecondary, fontWeight = FontWeight.Bold)
+        }
+    }
+}
