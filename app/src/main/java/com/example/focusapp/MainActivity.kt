@@ -130,6 +130,7 @@ fun MainContent() {
             }
             composable(Screen.ActiveSession.route) {
                 ActiveFocusSessionScreen(
+                    viewModel = viewModel,
                     onFinish = {
                         navController.navigate(Screen.SessionComplete.route) {
                             popUpTo(Screen.Home.route)

@@ -7,7 +7,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,20 +18,24 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.focusapp.ui.components.GlassCard
 import com.example.focusapp.ui.theme.*
+import com.example.focusapp.viewmodel.MainViewModel
 import kotlinx.coroutines.delay
 
 @Composable
 fun ActiveFocusSessionScreen(
+    viewModel: MainViewModel,
     onFinish: () -> Unit,
     onStop: () -> Unit
 ) {
-    var timeLeft by remember { mutableStateOf(1500) } // 25 mins in seconds
+    var timeLeft by remember { mutableIntStateOf(1500) } // 25 mins in seconds
     var isActive by remember { mutableStateOf(true) }
+    val currentTask by viewModel.currentTask.collectAsState()
 
     LaunchedEffect(isActive) {
         while (isActive && timeLeft > 0) {
@@ -42,14 +48,15 @@ fun ActiveFocusSessionScreen(
     }
 
     val progress = timeLeft / 1500f
-    val infiniteTransition = rememberInfiniteTransition()
+    val infiniteTransition = rememberInfiniteTransition(label = "glow")
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
         targetValue = 0.7f,
         animationSpec = infiniteRepeatable(
             animation = tween(2000, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
-        )
+        ),
+        label = "glowAlpha"
     )
 
     Column(
@@ -60,10 +67,25 @@ fun ActiveFocusSessionScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        if (currentTask != null) {
+            GlassCard(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.TaskAlt, contentDescription = null, tint = PrimaryNeon)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "Current Focus: ${currentTask?.title}",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
         Text(
-            text = "Stay Focused",
+            text = if (isActive) "Stay Focused" else "Session Paused",
             style = MaterialTheme.typography.headlineSmall,
-            color = TextSecondary,
+            color = if (isActive) TextSecondary else AccentPink,
             fontWeight = FontWeight.Medium
         )
         
@@ -119,6 +141,7 @@ fun ActiveFocusSessionScreen(
             style = MaterialTheme.typography.bodyLarge,
             color = TextPrimary,
             fontWeight = FontWeight.Light,
+            textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 32.dp)
         )
 
@@ -134,8 +157,8 @@ fun ActiveFocusSessionScreen(
                 colors = IconButtonDefaults.filledIconButtonColors(containerColor = GlassWhite)
             ) {
                 Icon(
-                    imageVector = if (isActive) Icons.Default.Pause else Icons.Default.Stop, // Simple toggle for UI
-                    contentDescription = "Pause",
+                    imageVector = if (isActive) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = if (isActive) "Pause" else "Resume",
                     tint = TextPrimary
                 )
             }
@@ -154,7 +177,7 @@ fun ActiveFocusSessionScreen(
     }
 }
 
-fun formatTime(seconds: Int): String {
+private fun formatTime(seconds: Int): String {
     val mins = seconds / 60
     val secs = seconds % 60
     return "%02d:%02d".format(mins, secs)
