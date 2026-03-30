@@ -18,6 +18,23 @@ data class FocusTask(
     val isCompleted: Boolean = false
 )
 
+data class FocusInsight(
+    val title: String,
+    val description: String,
+    val icon: String // Simplified icon name
+)
+
+data class Challenge(
+    val title: String,
+    val progress: Float,
+    val goal: String,
+    val isCompleted: Boolean = false
+)
+
+enum class FocusTheme {
+    DEEP_WORK, ZEN, NIGHT, EXAM
+}
+
 class MainViewModel : ViewModel() {
     private val _apps = MutableStateFlow(
         listOf(
@@ -45,6 +62,41 @@ class MainViewModel : ViewModel() {
     private val _currentTask = MutableStateFlow<FocusTask?>(null)
     val currentTask = _currentTask.asStateFlow()
 
+    // NEW FEATURES STATE
+    private val _focusScore = MutableStateFlow(82)
+    val focusScore = _focusScore.asStateFlow()
+
+    private val _xp = MutableStateFlow(320)
+    val xp = _xp.asStateFlow()
+
+    private val _level = MutableStateFlow("Deep Worker")
+    val level = _level.asStateFlow()
+
+    private val _distractionsResisted = MutableStateFlow(12)
+    val distractionsResisted = _distractionsResisted.asStateFlow()
+
+    private val _currentTheme = MutableStateFlow(FocusTheme.DEEP_WORK)
+    val currentTheme = _currentTheme.asStateFlow()
+
+    private val _insights = MutableStateFlow(
+        listOf(
+            FocusInsight("Night Owl Focus", "You focus 40% better after 9 PM. 🌙", "Nights"),
+            FocusInsight("App Distraction", "Instagram is your biggest distraction source.", "Instagram"),
+            FocusInsight("Session Length", "Try 45 min sessions for deeper focus.", "Timer")
+        )
+    )
+    val insights = _insights.asStateFlow()
+
+    private val _challenges = MutableStateFlow(
+        listOf(
+            Challenge("Daily Focused", 0.66f, "2/3 sessions"),
+            Challenge("Distraction Free", 1f, "2 hours", true),
+            Challenge("Consistency King", 0.3f, "3 days streak")
+        )
+    )
+    val challenges = _challenges.asStateFlow()
+
+    // DUMMY STATS
     private val _focusTimeToday = MutableStateFlow("4h 25m")
     val focusTimeToday = _focusTimeToday.asStateFlow()
 
@@ -81,5 +133,9 @@ class MainViewModel : ViewModel() {
 
     fun setCurrentTask(task: FocusTask?) {
         _currentTask.value = task
+    }
+
+    fun setTheme(theme: FocusTheme) {
+        _currentTheme.value = theme
     }
 }

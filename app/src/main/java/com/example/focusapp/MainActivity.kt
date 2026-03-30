@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material3.*
@@ -31,23 +32,26 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            FocusAppTheme {
-                MainContent()
+            val viewModel: MainViewModel = viewModel()
+            val focusTheme by viewModel.currentTheme.collectAsState()
+            
+            FocusAppTheme(focusTheme = focusTheme) {
+                MainContent(viewModel)
             }
         }
     }
 }
 
 @Composable
-fun MainContent() {
+fun MainContent(viewModel: MainViewModel) {
     val navController = rememberNavController()
-    val viewModel: MainViewModel = viewModel()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
     val bottomBarScreens = listOf(
         BottomNavItem("Home", Screen.Home.route, Icons.Default.Home),
         BottomNavItem("Stats", Screen.Stats.route, Icons.Default.ShowChart),
+        BottomNavItem("Insights", Screen.Insights.route, Icons.Default.Lightbulb),
         BottomNavItem("Settings", Screen.Settings.route, Icons.Default.Settings)
     )
 
@@ -77,8 +81,8 @@ fun MainContent() {
                                 }
                             },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = PrimaryNeon,
-                                selectedTextColor = PrimaryNeon,
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary,
                                 unselectedIconColor = TextSecondary,
                                 unselectedTextColor = TextSecondary,
                                 indicatorColor = GlassWhite
@@ -103,15 +107,26 @@ fun MainContent() {
                 })
             }
             composable(Screen.Home.route) {
-                HomeScreen(viewModel = viewModel, onStartFocus = {
-                    navController.navigate(Screen.FocusSetup.route)
-                })
+                HomeScreen(
+                    viewModel = viewModel, 
+                    onStartFocus = {
+                        navController.navigate(Screen.FocusSetup.route)
+                    },
+                    onNavigateToChallenges = {
+                        navController.navigate(Screen.Challenges.route)
+                    }
+                )
             }
             composable(Screen.Stats.route) {
-                StatsScreen()
+                StatsScreen(onNavigateToComparison = {
+                    navController.navigate(Screen.Comparison.route)
+                })
+            }
+            composable(Screen.Insights.route) {
+                InsightsScreen(viewModel = viewModel)
             }
             composable(Screen.Settings.route) {
-                SettingsScreen()
+                SettingsScreen(viewModel = viewModel)
             }
             composable(Screen.FocusSetup.route) {
                 FocusSetupScreen(
@@ -141,6 +156,7 @@ fun MainContent() {
             }
             composable(Screen.SessionComplete.route) {
                 SessionCompleteScreen(
+                    viewModel = viewModel,
                     onGoHome = {
                         navController.navigate(Screen.Home.route) {
                             popUpTo(Screen.Home.route) { inclusive = true }
@@ -157,6 +173,12 @@ fun MainContent() {
                 BlockOverlayScreen(onBackToFocus = {
                     navController.popBackStack()
                 })
+            }
+            composable(Screen.Challenges.route) {
+                ChallengesScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
+            }
+            composable(Screen.Comparison.route) {
+                ComparisonScreen(onBack = { navController.popBackStack() })
             }
         }
     }

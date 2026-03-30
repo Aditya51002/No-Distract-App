@@ -1,11 +1,13 @@
 package com.example.focusapp.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.HourglassBottom
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.*
@@ -23,7 +25,9 @@ import com.example.focusapp.ui.components.SectionHeader
 import com.example.focusapp.ui.theme.*
 
 @Composable
-fun StatsScreen() {
+fun StatsScreen(
+    onNavigateToComparison: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -60,7 +64,23 @@ fun StatsScreen() {
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
+
+        GlassCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onNavigateToComparison() }
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.TrendingUp, contentDescription = null, tint = PrimaryNeon)
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = "View Comparison", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = TextPrimary)
+                    Text(text = "Compare with previous periods", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                }
+                Icon(Icons.Default.ArrowForward, contentDescription = null, tint = TextSecondary)
+            }
+        }
 
         SectionHeader("Summary")
         Row(

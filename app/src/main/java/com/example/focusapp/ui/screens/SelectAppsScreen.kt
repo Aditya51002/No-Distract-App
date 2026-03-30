@@ -74,7 +74,7 @@ fun SelectAppsScreen(
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextSecondary) },
                 shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = PrimaryNeon,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = GlassBorder,
                     focusedContainerColor = GlassWhite,
                     unfocusedContainerColor = GlassWhite
@@ -105,11 +105,12 @@ fun AppListItem(
     isSelected: Boolean,
     onToggle: () -> Unit
 ) {
+    val primaryColor = MaterialTheme.colorScheme.primary
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(if (isSelected) PrimaryNeon.copy(alpha = 0.1f) else GlassWhite)
+            .background(if (isSelected) primaryColor.copy(alpha = 0.1f) else GlassWhite)
             .clickable { onToggle() }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -118,7 +119,7 @@ fun AppListItem(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(if (isSelected) PrimaryNeon else TextSecondary.copy(alpha = 0.3f)),
+                .background(if (isSelected) primaryColor else TextSecondary.copy(alpha = 0.3f)),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -131,7 +132,7 @@ fun AppListItem(
         Text(
             text = name,
             style = MaterialTheme.typography.bodyLarge,
-            color = if (isSelected) PrimaryNeon else TextPrimary,
+            color = if (isSelected) primaryColor else TextPrimary,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
             modifier = Modifier.weight(1f)
         )
@@ -140,7 +141,7 @@ fun AppListItem(
             onCheckedChange = { onToggle() },
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
-                checkedTrackColor = PrimaryNeon,
+                checkedTrackColor = primaryColor,
                 uncheckedThumbColor = TextSecondary,
                 uncheckedTrackColor = GlassBorder
             )

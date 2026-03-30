@@ -1,27 +1,35 @@
 package com.example.focusapp.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.focusapp.ui.components.GlassCard
 import com.example.focusapp.ui.components.SectionHeader
 import com.example.focusapp.ui.theme.*
+import com.example.focusapp.viewmodel.FocusTheme
+import com.example.focusapp.viewmodel.MainViewModel
 
 @Composable
-fun SettingsScreen() {
-    var darkMode by remember { mutableStateOf(true) }
+fun SettingsScreen(viewModel: MainViewModel) {
     var notifications by remember { mutableStateOf(true) }
     var strictMode by remember { mutableStateOf(false) }
+    val currentTheme by viewModel.currentTheme.collectAsState()
 
     Column(
         modifier = Modifier
@@ -38,22 +46,53 @@ fun SettingsScreen() {
             color = TextPrimary
         )
         Text(
-            text = "Customize your experience",
+            text = "Customize your focus experience",
             style = MaterialTheme.typography.bodyLarge,
             color = TextSecondary
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        SectionHeader("Focus Theme")
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            FocusTheme.values().forEach { theme ->
+                ThemeSelector(
+                    theme = theme,
+                    isSelected = currentTheme == theme,
+                    onClick = { viewModel.setTheme(theme) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        SectionHeader("Smart Reminders")
+        GlassCard(modifier = Modifier.fillMaxWidth()) {
+            ReminderItem("Morning Focus", "08:00 AM")
+            HorizontalDivider(color = GlassBorder, modifier = Modifier.padding(vertical = 12.dp))
+            ReminderItem("Deep Work", "02:00 PM")
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            TextButton(
+                onClick = { /* TODO: Add reminder logic */ },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, tint = PrimaryNeon)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Add New Reminder", color = PrimaryNeon, fontWeight = FontWeight.Bold)
+            }
+        }
 
         SectionHeader("Preferences")
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             ToggleOption(
-                label = "Dark Mode",
-                description = "Enable dark theme",
-                checked = darkMode,
-                onCheckedChange = { darkMode = it }
+                label = "Always Strict Mode",
+                description = "Default to strict focus sessions",
+                checked = strictMode,
+                onCheckedChange = { strictMode = it }
             )
-            Divider(color = GlassBorder, modifier = Modifier.padding(vertical = 12.dp))
+            HorizontalDivider(color = GlassBorder, modifier = Modifier.padding(vertical = 12.dp))
             ToggleOption(
                 label = "Push Notifications",
                 description = "Get alerts and reminders",
@@ -62,28 +101,66 @@ fun SettingsScreen() {
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        SectionHeader("Defaults")
-        GlassCard(modifier = Modifier.fillMaxWidth()) {
-            ToggleOption(
-                label = "Always Strict Mode",
-                description = "Default to strict focus sessions",
-                checked = strictMode,
-                onCheckedChange = { strictMode = it }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
         SectionHeader("About")
         GlassCard(modifier = Modifier.fillMaxWidth()) {
-            SettingsItem(label = "Version", value = "1.0.0")
-            Divider(color = GlassBorder, modifier = Modifier.padding(vertical = 12.dp))
+            SettingsItem(label = "Version", value = "1.2.0")
+            HorizontalDivider(color = GlassBorder, modifier = Modifier.padding(vertical = 12.dp))
             SettingsItem(label = "Developer", value = "Aditya")
         }
 
         Spacer(modifier = Modifier.height(100.dp))
+    }
+}
+
+@Composable
+fun ThemeSelector(
+    theme: FocusTheme,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val (color, name) = when(theme) {
+        FocusTheme.DEEP_WORK -> PrimaryNeon to "Deep"
+        FocusTheme.ZEN -> Color(0xFF4CAF50) to "Zen"
+        FocusTheme.NIGHT -> Color(0xFF9C27B0) to "Night"
+        FocusTheme.EXAM -> AccentPink to "Exam"
+    }
+    
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier.clickable { onClick() }
+    ) {
+        Box(
+            modifier = Modifier
+                .size(50.dp)
+                .clip(CircleShape)
+                .background(color)
+                .border(2.dp, if (isSelected) Color.White else Color.Transparent, CircleShape)
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = name,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isSelected) TextPrimary else TextSecondary,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+        )
+    }
+}
+
+@Composable
+fun ReminderItem(label: String, time: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column {
+            Text(text = label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = TextPrimary)
+            Text(text = time, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+        }
+        IconButton(onClick = { /* TODO: Delete reminder */ }) {
+            Icon(Icons.Default.Delete, contentDescription = null, tint = TextSecondary.copy(alpha = 0.5f))
+        }
     }
 }
 
