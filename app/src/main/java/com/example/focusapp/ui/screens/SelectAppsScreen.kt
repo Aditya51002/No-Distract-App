@@ -1,5 +1,7 @@
 package com.example.focusapp.ui.screens
 
+import android.content.Intent
+import android.content.pm.PackageManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,10 +18,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.focusapp.ui.components.CustomButton
 import com.example.focusapp.ui.theme.*
+import com.example.focusapp.viewmodel.AppItem
 import com.example.focusapp.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,6 +35,30 @@ fun SelectAppsScreen(
 ) {
     val apps by viewModel.apps.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        val packageManager = context.packageManager
+        val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        val launcherApps = packageManager
+            .queryIntentActivities(launcherIntent, PackageManager.MATCH_ALL)
+            .mapNotNull { resolveInfo ->
+                val appInfo = resolveInfo.activityInfo?.applicationInfo ?: return@mapNotNull null
+                val packageName = appInfo.packageName
+                val appName = packageManager.getApplicationLabel(appInfo)?.toString().orEmpty()
+                if (packageName.isBlank() || appName.isBlank()) {
+                    null
+                } else {
+                    AppItem(name = appName, packageName = packageName)
+                }
+            }
+            .distinctBy { it.packageName }
+            .sortedBy { it.name.lowercase() }
+
+        if (launcherApps.isNotEmpty()) {
+            viewModel.setAvailableApps(launcherApps)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -51,7 +79,7 @@ fun SelectAppsScreen(
         bottomBar = {
             Box(modifier = Modifier.padding(24.dp).navigationBarsPadding()) {
                 CustomButton(text = "Save Selection", onClick = {
-                    // TODO: Save selected apps to backend/local storage
+                    viewModel.saveSelectedApps()
                     onSave()
                 })
             }
@@ -85,7 +113,6 @@ fun SelectAppsScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(bottom = 100.dp)
             ) {
-                // TODO: Fetch real installed apps using PackageManager
                 val filteredApps = apps.filter { it.name.contains(searchQuery, ignoreCase = true) }
                 items(filteredApps) { app ->
                     AppListItem(

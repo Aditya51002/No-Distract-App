@@ -6,12 +6,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.HourglassBottom
-import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -19,15 +19,22 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.focusapp.ui.components.GlassCard
 import com.example.focusapp.ui.components.SectionHeader
 import com.example.focusapp.ui.theme.*
+import com.example.focusapp.viewmodel.MainViewModel
 
 @Composable
 fun StatsScreen(
+    viewModel: MainViewModel,
     onNavigateToComparison: () -> Unit
 ) {
+    val weeklyFocus by viewModel.weeklyFocusMinutes.collectAsState()
+    val blocked by viewModel.distractionsBlocked.collectAsState()
+    val completionRate by viewModel.completionRate.collectAsState()
+
+    val maxFocus = (weeklyFocus.maxOrNull() ?: 1).coerceAtLeast(1)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -35,7 +42,7 @@ fun StatsScreen(
             .verticalScroll(rememberScrollState())
     ) {
         Spacer(modifier = Modifier.height(48.dp))
-        
+
         Text(
             text = "Analytics",
             style = MaterialTheme.typography.headlineMedium,
@@ -50,7 +57,6 @@ fun StatsScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // TODO: Fetch real analytics from backend
         SectionHeader("Focus Time")
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             Row(
@@ -58,8 +64,9 @@ fun StatsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Bottom
             ) {
-                (1..7).forEach { day ->
-                    Bar(height = (40..120).random().dp)
+                weeklyFocus.forEach { minutes ->
+                    val barHeight = ((minutes.toFloat() / maxFocus) * 120f).coerceAtLeast(24f).dp
+                    Bar(height = barHeight)
                 }
             }
         }
@@ -72,13 +79,13 @@ fun StatsScreen(
                 .clickable { onNavigateToComparison() }
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.TrendingUp, contentDescription = null, tint = PrimaryNeon)
+                Icon(Icons.AutoMirrored.Filled.TrendingUp, contentDescription = null, tint = PrimaryNeon)
                 Spacer(modifier = Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = "View Comparison", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = TextPrimary)
                     Text(text = "Compare with previous periods", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                 }
-                Icon(Icons.Default.ArrowForward, contentDescription = null, tint = TextSecondary)
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = TextSecondary)
             }
         }
 
@@ -89,18 +96,18 @@ fun StatsScreen(
         ) {
             InfoCard(
                 label = "Distractions",
-                value = "1.2k",
+                value = blocked.toString(),
                 color = AccentPink,
                 modifier = Modifier.weight(1f)
             )
             InfoCard(
                 label = "Completion",
-                value = "94%",
+                value = completionRate,
                 color = Color(0xFF4CAF50),
                 modifier = Modifier.weight(1f)
             )
         }
-        
+
         Spacer(modifier = Modifier.height(100.dp))
     }
 }

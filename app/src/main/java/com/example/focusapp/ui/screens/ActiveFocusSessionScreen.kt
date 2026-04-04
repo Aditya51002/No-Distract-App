@@ -33,12 +33,14 @@ fun ActiveFocusSessionScreen(
     onFinish: () -> Unit,
     onStop: () -> Unit
 ) {
-    var timeLeft by remember { mutableIntStateOf(1500) } // 25 mins in seconds
+    val sessionDurationSeconds by viewModel.activeSessionDurationSeconds.collectAsState()
+    val strictMode by viewModel.strictModeEnabled.collectAsState()
+    var timeLeft by remember(sessionDurationSeconds) { mutableIntStateOf(sessionDurationSeconds) }
     var isActive by remember { mutableStateOf(true) }
     val currentTask by viewModel.currentTask.collectAsState()
 
-    LaunchedEffect(isActive) {
-        while (isActive && timeLeft > 0) {
+    LaunchedEffect(isActive, timeLeft) {
+        if (isActive && timeLeft > 0) {
             delay(1000)
             timeLeft--
         }
@@ -47,7 +49,7 @@ fun ActiveFocusSessionScreen(
         }
     }
 
-    val progress = timeLeft / 1500f
+    val progress = if (sessionDurationSeconds == 0) 0f else timeLeft / sessionDurationSeconds.toFloat()
     val infiniteTransition = rememberInfiniteTransition(label = "glow")
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
@@ -165,13 +167,14 @@ fun ActiveFocusSessionScreen(
 
             Button(
                 onClick = onStop,
+                enabled = !strictMode,
                 modifier = Modifier
                     .height(64.dp)
                     .width(160.dp),
                 shape = RoundedCornerShape(32.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AccentPink)
             ) {
-                Text("End Session", fontWeight = FontWeight.Bold)
+                Text(if (strictMode) "Strict Mode" else "End Session", fontWeight = FontWeight.Bold)
             }
         }
     }

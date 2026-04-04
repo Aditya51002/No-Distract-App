@@ -118,9 +118,12 @@ fun MainContent(viewModel: MainViewModel) {
                 )
             }
             composable(Screen.Stats.route) {
-                StatsScreen(onNavigateToComparison = {
-                    navController.navigate(Screen.Comparison.route)
-                })
+                StatsScreen(
+                    viewModel = viewModel,
+                    onNavigateToComparison = {
+                        navController.navigate(Screen.Comparison.route)
+                    }
+                )
             }
             composable(Screen.Insights.route) {
                 InsightsScreen(viewModel = viewModel)
@@ -147,6 +150,7 @@ fun MainContent(viewModel: MainViewModel) {
                 ActiveFocusSessionScreen(
                     viewModel = viewModel,
                     onFinish = {
+                        viewModel.completeSession()
                         navController.navigate(Screen.SessionComplete.route) {
                             popUpTo(Screen.Home.route)
                         }

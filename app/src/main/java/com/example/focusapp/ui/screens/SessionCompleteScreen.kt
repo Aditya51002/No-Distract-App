@@ -26,7 +26,8 @@ fun SessionCompleteScreen(
     onStartAgain: () -> Unit
 ) {
     val distractions by viewModel.distractionsResisted.collectAsState()
-    
+    val lastDurationMinutes by viewModel.lastCompletedSessionDurationMinutes.collectAsState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -54,7 +55,7 @@ fun SessionCompleteScreen(
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = "You've successfully focused for 25 minutes.",
+            text = "You've successfully focused for $lastDurationMinutes minutes.",
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
             color = TextSecondary

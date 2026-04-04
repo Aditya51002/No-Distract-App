@@ -36,9 +36,9 @@ fun FocusSetupScreen(
     onSelectApps: () -> Unit,
     onStartSession: () -> Unit
 ) {
-    var selectedDuration by remember { mutableStateOf(25) }
-    var strictMode by remember { mutableStateOf(false) }
-    var notifications by remember { mutableStateOf(true) }
+    val selectedDuration by viewModel.selectedSessionDurationMinutes.collectAsState()
+    val strictMode by viewModel.strictModeEnabled.collectAsState()
+    val notifications by viewModel.notificationsEnabled.collectAsState()
     val selectedApps by viewModel.apps.collectAsState()
     val selectedAppsCount = selectedApps.count { it.isSelected }
     val tasks by viewModel.focusTasks.collectAsState()
@@ -82,7 +82,7 @@ fun FocusSetupScreen(
                         DurationChip(
                             duration = duration,
                             isSelected = selectedDuration == duration,
-                            onClick = { selectedDuration = duration },
+                            onClick = { viewModel.setSelectedSessionDuration(duration) },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -127,14 +127,14 @@ fun FocusSetupScreen(
                         label = "Strict Mode",
                         description = "Cannot exit session early",
                         checked = strictMode,
-                        onCheckedChange = { strictMode = it }
+                        onCheckedChange = { viewModel.setStrictModeEnabled(it) }
                     )
                     HorizontalDivider(color = GlassBorder, modifier = Modifier.padding(vertical = 12.dp))
                     ToggleOption(
                         label = "Block Notifications",
                         description = "Silence all alerts",
                         checked = notifications,
-                        onCheckedChange = { notifications = it }
+                        onCheckedChange = { viewModel.setNotificationsEnabled(it) }
                     )
                 }
             }
@@ -168,7 +168,10 @@ fun FocusSetupScreen(
             item {
                 CustomButton(
                     text = "Start Focus Session",
-                    onClick = onStartSession
+                    onClick = {
+                        viewModel.startSession()
+                        onStartSession()
+                    }
                 )
             }
             

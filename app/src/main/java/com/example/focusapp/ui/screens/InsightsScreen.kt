@@ -44,6 +44,7 @@ fun InsightsScreen(viewModel: MainViewModel) {
         SectionHeader("Personalized for you")
         
         LazyColumn(
+            modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(bottom = 100.dp)
         ) {

@@ -31,6 +31,12 @@ data class Challenge(
     val isCompleted: Boolean = false
 )
 
+data class Reminder(
+    val id: String,
+    val label: String,
+    val time: String
+)
+
 enum class FocusTheme {
     DEEP_WORK, ZEN, NIGHT, EXAM
 }
@@ -96,6 +102,35 @@ class MainViewModel : ViewModel() {
     )
     val challenges = _challenges.asStateFlow()
 
+    private val _selectedSessionDurationMinutes = MutableStateFlow(25)
+    val selectedSessionDurationMinutes = _selectedSessionDurationMinutes.asStateFlow()
+
+    private val _strictModeEnabled = MutableStateFlow(false)
+    val strictModeEnabled = _strictModeEnabled.asStateFlow()
+
+    private val _notificationsEnabled = MutableStateFlow(true)
+    val notificationsEnabled = _notificationsEnabled.asStateFlow()
+
+    private val _activeSessionDurationSeconds = MutableStateFlow(25 * 60)
+    val activeSessionDurationSeconds = _activeSessionDurationSeconds.asStateFlow()
+
+    private val _lastCompletedSessionDurationMinutes = MutableStateFlow(25)
+    val lastCompletedSessionDurationMinutes = _lastCompletedSessionDurationMinutes.asStateFlow()
+
+    private val _reminders = MutableStateFlow(
+        listOf(
+            Reminder(id = "morning", label = "Morning Focus", time = "08:00 AM"),
+            Reminder(id = "deep-work", label = "Deep Work", time = "02:00 PM")
+        )
+    )
+    val reminders = _reminders.asStateFlow()
+
+    private val _weeklyFocusMinutes = MutableStateFlow(listOf(62, 90, 48, 105, 78, 96, 84))
+    val weeklyFocusMinutes = _weeklyFocusMinutes.asStateFlow()
+
+    private val _completionRate = MutableStateFlow("94%")
+    val completionRate = _completionRate.asStateFlow()
+
     // DUMMY STATS
     private val _focusTimeToday = MutableStateFlow("4h 25m")
     val focusTimeToday = _focusTimeToday.asStateFlow()
@@ -137,5 +172,65 @@ class MainViewModel : ViewModel() {
 
     fun setTheme(theme: FocusTheme) {
         _currentTheme.value = theme
+    }
+
+    fun setAvailableApps(installedApps: List<AppItem>) {
+        val selectedPackages = _apps.value.filter { it.isSelected }.map { it.packageName }.toSet()
+        _apps.value = installedApps.map { app ->
+            app.copy(isSelected = app.packageName in selectedPackages)
+        }
+    }
+
+    fun saveSelectedApps() {
+        // Selection is already reflected in state; this hook is kept for backend/local persistence wiring.
+    }
+
+    fun setSelectedSessionDuration(minutes: Int) {
+        _selectedSessionDurationMinutes.value = minutes
+    }
+
+    fun setStrictModeEnabled(enabled: Boolean) {
+        _strictModeEnabled.value = enabled
+    }
+
+    fun setNotificationsEnabled(enabled: Boolean) {
+        _notificationsEnabled.value = enabled
+    }
+
+    fun startSession() {
+        _activeSessionDurationSeconds.value = _selectedSessionDurationMinutes.value * 60
+    }
+
+    fun completeSession() {
+        val sessionMinutes = _selectedSessionDurationMinutes.value
+        _lastCompletedSessionDurationMinutes.value = sessionMinutes
+        _sessionsToday.update { it + 1 }
+        _focusTimeToday.value = addMinutesToDuration(_focusTimeToday.value, sessionMinutes)
+        _xp.update { it + (sessionMinutes / 5) }
+    }
+
+    fun addReminder(label: String, time: String) {
+        if (label.isBlank() || time.isBlank()) return
+        _reminders.update {
+            it + Reminder(
+                id = System.currentTimeMillis().toString(),
+                label = label.trim(),
+                time = time.trim()
+            )
+        }
+    }
+
+    fun deleteReminder(reminderId: String) {
+        _reminders.update { reminders -> reminders.filterNot { it.id == reminderId } }
+    }
+
+    private fun addMinutesToDuration(duration: String, minutesToAdd: Int): String {
+        val cleaned = duration.lowercase().replace(" ", "")
+        val hours = cleaned.substringBefore("h", "0").toIntOrNull() ?: 0
+        val minutes = cleaned.substringAfter("h", "0").substringBefore("m", "0").toIntOrNull() ?: 0
+        val totalMinutes = (hours * 60) + minutes + minutesToAdd
+        val newHours = totalMinutes / 60
+        val newMinutes = totalMinutes % 60
+        return "${newHours}h ${newMinutes}m"
     }
 }

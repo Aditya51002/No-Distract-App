@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -27,9 +26,14 @@ import com.example.focusapp.viewmodel.MainViewModel
 
 @Composable
 fun SettingsScreen(viewModel: MainViewModel) {
-    var notifications by remember { mutableStateOf(true) }
-    var strictMode by remember { mutableStateOf(false) }
+    val strictMode by viewModel.strictModeEnabled.collectAsState()
+    val notifications by viewModel.notificationsEnabled.collectAsState()
     val currentTheme by viewModel.currentTheme.collectAsState()
+    val reminders by viewModel.reminders.collectAsState()
+
+    var showAddReminderDialog by remember { mutableStateOf(false) }
+    var reminderTitle by remember { mutableStateOf("") }
+    var reminderTime by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -38,7 +42,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
             .verticalScroll(rememberScrollState())
     ) {
         Spacer(modifier = Modifier.height(48.dp))
-        
+
         Text(
             text = "Settings",
             style = MaterialTheme.typography.headlineMedium,
@@ -56,7 +60,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            FocusTheme.values().forEach { theme ->
+            FocusTheme.entries.forEach { theme ->
                 ThemeSelector(
                     theme = theme,
                     isSelected = currentTheme == theme,
@@ -68,14 +72,29 @@ fun SettingsScreen(viewModel: MainViewModel) {
 
         SectionHeader("Smart Reminders")
         GlassCard(modifier = Modifier.fillMaxWidth()) {
-            ReminderItem("Morning Focus", "08:00 AM")
-            HorizontalDivider(color = GlassBorder, modifier = Modifier.padding(vertical = 12.dp))
-            ReminderItem("Deep Work", "02:00 PM")
-            
+            if (reminders.isEmpty()) {
+                Text(
+                    text = "No reminders yet. Add one to stay consistent.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary
+                )
+            } else {
+                reminders.forEachIndexed { index, reminder ->
+                    ReminderItem(
+                        label = reminder.label,
+                        time = reminder.time,
+                        onDelete = { viewModel.deleteReminder(reminder.id) }
+                    )
+                    if (index < reminders.lastIndex) {
+                        HorizontalDivider(color = GlassBorder, modifier = Modifier.padding(vertical = 12.dp))
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             TextButton(
-                onClick = { /* TODO: Add reminder logic */ },
+                onClick = { showAddReminderDialog = true },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(Icons.Default.Add, contentDescription = null, tint = PrimaryNeon)
@@ -90,14 +109,14 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 label = "Always Strict Mode",
                 description = "Default to strict focus sessions",
                 checked = strictMode,
-                onCheckedChange = { strictMode = it }
+                onCheckedChange = { viewModel.setStrictModeEnabled(it) }
             )
             HorizontalDivider(color = GlassBorder, modifier = Modifier.padding(vertical = 12.dp))
             ToggleOption(
                 label = "Push Notifications",
                 description = "Get alerts and reminders",
                 checked = notifications,
-                onCheckedChange = { notifications = it }
+                onCheckedChange = { viewModel.setNotificationsEnabled(it) }
             )
         }
 
@@ -109,6 +128,46 @@ fun SettingsScreen(viewModel: MainViewModel) {
         }
 
         Spacer(modifier = Modifier.height(100.dp))
+    }
+
+    if (showAddReminderDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddReminderDialog = false },
+            title = { Text("Add Reminder") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = reminderTitle,
+                        onValueChange = { reminderTitle = it },
+                        label = { Text("Title") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = reminderTime,
+                        onValueChange = { reminderTime = it },
+                        label = { Text("Time (e.g. 08:00 AM)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.addReminder(reminderTitle, reminderTime)
+                    reminderTitle = ""
+                    reminderTime = ""
+                    showAddReminderDialog = false
+                }) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddReminderDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -148,7 +207,7 @@ fun ThemeSelector(
 }
 
 @Composable
-fun ReminderItem(label: String, time: String) {
+fun ReminderItem(label: String, time: String, onDelete: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -158,7 +217,7 @@ fun ReminderItem(label: String, time: String) {
             Text(text = label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = TextPrimary)
             Text(text = time, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
         }
-        IconButton(onClick = { /* TODO: Delete reminder */ }) {
+        IconButton(onClick = onDelete) {
             Icon(Icons.Default.Delete, contentDescription = null, tint = TextSecondary.copy(alpha = 0.5f))
         }
     }
