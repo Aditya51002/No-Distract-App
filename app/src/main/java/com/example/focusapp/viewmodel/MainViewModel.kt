@@ -1,15 +1,21 @@
 package com.example.focusapp.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.focusapp.FocusApp
+import com.example.focusapp.data.AuthRepository
+import com.example.focusapp.data.FocusRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 data class AppItem(
     val name: String,
     val packageName: String,
     val iconRes: Int = 0,
-    var isSelected: Boolean = false
+    var isSelected: Boolean = false,
+    val remoteId: String? = null
 )
 
 data class FocusTask(
@@ -21,7 +27,7 @@ data class FocusTask(
 data class FocusInsight(
     val title: String,
     val description: String,
-    val icon: String // Simplified icon name
+    val icon: String
 )
 
 data class Challenge(
@@ -42,6 +48,10 @@ enum class FocusTheme {
 }
 
 class MainViewModel : ViewModel() {
+    private val appContainer = FocusApp.instance.appContainer
+    private val authRepository: AuthRepository = appContainer.authRepository
+    private val focusRepository: FocusRepository = appContainer.focusRepository
+
     private val _apps = MutableStateFlow(
         listOf(
             AppItem("Instagram", "com.instagram.android"),
@@ -68,7 +78,6 @@ class MainViewModel : ViewModel() {
     private val _currentTask = MutableStateFlow<FocusTask?>(null)
     val currentTask = _currentTask.asStateFlow()
 
-    // NEW FEATURES STATE
     private val _focusScore = MutableStateFlow(82)
     val focusScore = _focusScore.asStateFlow()
 
@@ -86,7 +95,7 @@ class MainViewModel : ViewModel() {
 
     private val _insights = MutableStateFlow(
         listOf(
-            FocusInsight("Night Owl Focus", "You focus 40% better after 9 PM. 🌙", "Nights"),
+            FocusInsight("Night Owl Focus", "You focus 40% better after 9 PM.", "Nights"),
             FocusInsight("App Distraction", "Instagram is your biggest distraction source.", "Instagram"),
             FocusInsight("Session Length", "Try 45 min sessions for deeper focus.", "Timer")
         )
@@ -117,12 +126,7 @@ class MainViewModel : ViewModel() {
     private val _lastCompletedSessionDurationMinutes = MutableStateFlow(25)
     val lastCompletedSessionDurationMinutes = _lastCompletedSessionDurationMinutes.asStateFlow()
 
-    private val _reminders = MutableStateFlow(
-        listOf(
-            Reminder(id = "morning", label = "Morning Focus", time = "08:00 AM"),
-            Reminder(id = "deep-work", label = "Deep Work", time = "02:00 PM")
-        )
-    )
+    private val _reminders = MutableStateFlow(emptyList<Reminder>())
     val reminders = _reminders.asStateFlow()
 
     private val _weeklyFocusMinutes = MutableStateFlow(listOf(62, 90, 48, 105, 78, 96, 84))
@@ -131,7 +135,6 @@ class MainViewModel : ViewModel() {
     private val _completionRate = MutableStateFlow("94%")
     val completionRate = _completionRate.asStateFlow()
 
-    // DUMMY STATS
     private val _focusTimeToday = MutableStateFlow("4h 25m")
     val focusTimeToday = _focusTimeToday.asStateFlow()
 
@@ -144,12 +147,57 @@ class MainViewModel : ViewModel() {
     private val _distractionsBlocked = MutableStateFlow(124)
     val distractionsBlocked = _distractionsBlocked.asStateFlow()
 
-    fun toggleAppSelection(app: AppItem) {
-        _apps.update { list ->
-            list.map {
-                if (it.packageName == app.packageName) it.copy(isSelected = !it.isSelected) else it
+    init {
+        viewModelScope.launch {
+            authRepository.applyPersistedToken()
+            focusRepository.fetchRemoteSessionConfig()
+            focusRepository.refreshReminders()
+        }
+
+        viewModelScope.launch {
+            focusRepository.observeBlockedApps().collect { stored ->
+                val selectedMap = stored.associateBy { it.packageName }
+                _apps.update { current ->
+                    current.map { item ->
+                        val persisted = selectedMap[item.packageName]
+                        if (persisted != null) {
+                            item.copy(
+                                name = persisted.appName,
+                                isSelected = persisted.isSelected,
+                                remoteId = persisted.remoteId
+                            )
+                        } else {
+                            item
+                        }
+                    }
+                }
             }
         }
+
+        viewModelScope.launch {
+            focusRepository.observeReminders().collect { list ->
+                _reminders.value = list.map { Reminder(id = it.id, label = it.label, time = it.time) }
+            }
+        }
+
+        viewModelScope.launch {
+            focusRepository.selectedDurationMinutesFlow.collect { _selectedSessionDurationMinutes.value = it }
+        }
+        viewModelScope.launch {
+            focusRepository.strictModeFlow.collect { _strictModeEnabled.value = it }
+        }
+        viewModelScope.launch {
+            focusRepository.notificationsEnabledFlow.collect { _notificationsEnabled.value = it }
+        }
+        viewModelScope.launch {
+            focusRepository.selectedThemeFlow.collect { stored ->
+                _currentTheme.value = runCatching { FocusTheme.valueOf(stored) }.getOrDefault(FocusTheme.DEEP_WORK)
+            }
+        }
+    }
+
+    fun toggleAppSelection(app: AppItem) {
+        viewModelScope.launch { focusRepository.toggleAppSelection(app.packageName) }
     }
 
     fun addTask(title: String) {
@@ -160,9 +208,7 @@ class MainViewModel : ViewModel() {
 
     fun toggleTaskCompletion(taskId: String) {
         _focusTasks.update { list ->
-            list.map {
-                if (it.id == taskId) it.copy(isCompleted = !it.isCompleted) else it
-            }
+            list.map { if (it.id == taskId) it.copy(isCompleted = !it.isCompleted) else it }
         }
     }
 
@@ -172,33 +218,58 @@ class MainViewModel : ViewModel() {
 
     fun setTheme(theme: FocusTheme) {
         _currentTheme.value = theme
-    }
-
-    fun setAvailableApps(installedApps: List<AppItem>) {
-        val selectedPackages = _apps.value.filter { it.isSelected }.map { it.packageName }.toSet()
-        _apps.value = installedApps.map { app ->
-            app.copy(isSelected = app.packageName in selectedPackages)
+        viewModelScope.launch {
+            focusRepository.saveTheme(theme.name)
+            focusRepository.pushSessionConfig()
         }
     }
 
+    fun setAvailableApps(installedApps: List<AppItem>) {
+        viewModelScope.launch {
+            focusRepository.setAvailableApps(installedApps.map { it.name to it.packageName })
+        }
+        _apps.value = installedApps
+    }
+
     fun saveSelectedApps() {
-        // Selection is already reflected in state; this hook is kept for backend/local persistence wiring.
+        viewModelScope.launch { focusRepository.syncBlockedAppsWithBackend() }
     }
 
     fun setSelectedSessionDuration(minutes: Int) {
         _selectedSessionDurationMinutes.value = minutes
+        viewModelScope.launch {
+            focusRepository.saveSelectedDuration(minutes)
+            focusRepository.pushSessionConfig()
+        }
     }
 
     fun setStrictModeEnabled(enabled: Boolean) {
         _strictModeEnabled.value = enabled
+        viewModelScope.launch {
+            focusRepository.saveStrictMode(enabled)
+            focusRepository.pushSessionConfig()
+        }
     }
 
     fun setNotificationsEnabled(enabled: Boolean) {
         _notificationsEnabled.value = enabled
+        viewModelScope.launch {
+            focusRepository.saveNotificationsEnabled(enabled)
+            focusRepository.pushSessionConfig()
+        }
     }
 
     fun startSession() {
-        _activeSessionDurationSeconds.value = _selectedSessionDurationMinutes.value * 60
+        val minutes = _selectedSessionDurationMinutes.value
+        _activeSessionDurationSeconds.value = minutes * 60
+        val blockedCount = _apps.value.count { it.isSelected }
+        viewModelScope.launch {
+            focusRepository.startSession(
+                durationMinutes = minutes,
+                blockedAppsCount = blockedCount,
+                title = _currentTask.value?.title ?: "Focus Session"
+            )
+        }
     }
 
     fun completeSession() {
@@ -207,21 +278,26 @@ class MainViewModel : ViewModel() {
         _sessionsToday.update { it + 1 }
         _focusTimeToday.value = addMinutesToDuration(_focusTimeToday.value, sessionMinutes)
         _xp.update { it + (sessionMinutes / 5) }
+
+        viewModelScope.launch { focusRepository.completeActiveSession(distractionAttempts = 0) }
     }
 
     fun addReminder(label: String, time: String) {
         if (label.isBlank() || time.isBlank()) return
-        _reminders.update {
-            it + Reminder(
-                id = System.currentTimeMillis().toString(),
-                label = label.trim(),
-                time = time.trim()
-            )
-        }
+        viewModelScope.launch { focusRepository.addReminder(label, time) }
     }
 
     fun deleteReminder(reminderId: String) {
-        _reminders.update { reminders -> reminders.filterNot { it.id == reminderId } }
+        viewModelScope.launch { focusRepository.deleteReminder(reminderId) }
+    }
+
+    fun login(email: String, password: String) {
+        viewModelScope.launch {
+            authRepository.login(email, password)
+            focusRepository.syncBlockedAppsWithBackend()
+            focusRepository.refreshReminders()
+            focusRepository.fetchRemoteSessionConfig()
+        }
     }
 
     private fun addMinutesToDuration(duration: String, minutesToAdd: Int): String {

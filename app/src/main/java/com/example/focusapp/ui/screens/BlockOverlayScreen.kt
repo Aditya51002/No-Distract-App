@@ -19,8 +19,13 @@ import com.example.focusapp.ui.theme.*
 
 @Composable
 fun BlockOverlayScreen(
+    blockedPackage: String = "",
+    remainingSeconds: Long = 0L,
     onBackToFocus: () -> Unit
 ) {
+    val mins = (remainingSeconds / 60).coerceAtLeast(0)
+    val secs = (remainingSeconds % 60).coerceAtLeast(0)
+
     // TODO: Trigger this screen when blocked app is opened
     // This would typically be a separate Activity or a system overlay
     
@@ -58,11 +63,21 @@ fun BlockOverlayScreen(
                 textAlign = TextAlign.Center,
                 color = TextSecondary
             )
-            
+
+            if (blockedPackage.isNotBlank()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = blockedPackage,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
             Spacer(modifier = Modifier.height(48.dp))
             
             Text(
-                text = "12:45 remaining",
+                text = "%02d:%02d remaining".format(mins, secs),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = PrimaryNeon
