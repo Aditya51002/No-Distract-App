@@ -5,12 +5,21 @@ const User = require("../models/user.model");
 const ApiError = require("../utils/apiError");
 
 const register = asyncHandler(async (req, res) => {
+  const { name, email, password } = req.body;
+  if (!name || !email || !password) {
+    throw new ApiError(400, "name, email and password are required");
+  }
+
   const user = await authService.registerUser(req.body);
   return res.status(201).json(new ApiResponse(201, user, "User registered successfully"));
 });
 
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
+  if (!email || !password) {
+    throw new ApiError(400, "email and password are required");
+  }
+
   const result = await authService.loginUser(email, password);
   return res.status(200).json(new ApiResponse(200, result, "Login successful"));
 });

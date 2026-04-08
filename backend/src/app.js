@@ -8,10 +8,25 @@ const ApiError = require("./utils/apiError");
 
 const app = express();
 
+const parsedCorsOrigins = (process.env.CORS_ORIGIN || "*")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
 // Security Middlewares
 app.use(helmet());
 app.use(cors({
-    origin: process.env.CORS_ORIGIN,
+    origin: (origin, callback) => {
+        if (!origin) {
+            return callback(null, true);
+        }
+
+        if (parsedCorsOrigins.includes("*") || parsedCorsOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        return callback(new ApiError(403, "CORS policy does not allow this origin"));
+    },
     credentials: true
 }));
 
@@ -36,10 +51,22 @@ app.use("/api", limiter);
 // Routes import
 const authRouter = require("./routes/auth.routes");
 const focusLockRouter = require("./routes/focusLock.routes");
+const blockedAppsRouter = require("./routes/blockedApps.routes");
+const sessionsRouter = require("./routes/sessions.routes");
+const remindersRouter = require("./routes/reminders.routes");
 
 // Routes declaration
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/focus-lock", focusLockRouter);
+
+// Explicit aliases for mobile/client integrations.
+app.use("/api/v1/blocked-apps", blockedAppsRouter);
+app.use("/api/v1/sessions", sessionsRouter);
+app.use("/api/v1/reminders", remindersRouter);
+
+app.get("/health", (_, res) => {
+    res.status(200).json({ success: true, message: "Backend is healthy" });
+});
 
 // 404 handler
 app.use((req, res, next) => {

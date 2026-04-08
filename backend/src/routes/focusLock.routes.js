@@ -14,7 +14,9 @@ const {
     getRewards,
     getChallenges,
     getReminders,
-    createReminder
+    createReminder,
+    updateReminder,
+    deleteReminder
 } = require("../controllers/focusLock.controller");
 const verifyJWT = require("../middlewares/auth.middleware");
 
@@ -46,5 +48,6 @@ router.route("/challenges").get(getChallenges);
 
 // Reminders
 router.route("/reminders").get(getReminders).post(createReminder);
+router.route("/reminders/:id").patch(updateReminder).delete(deleteReminder);
 
 module.exports = router;

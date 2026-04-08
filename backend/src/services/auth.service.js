@@ -3,14 +3,21 @@ const ApiError = require("../utils/apiError");
 
 class AuthService {
   async registerUser(userData) {
-    const { email } = userData;
+    const name = userData?.name?.trim();
+    const email = userData?.email?.trim()?.toLowerCase();
+    const password = userData?.password;
+
+    if (!name || !email || !password) {
+      throw new ApiError(400, "name, email and password are required");
+    }
+
     const existedUser = await User.findOne({ email });
 
     if (existedUser) {
       throw new ApiError(409, "User with email already exists");
     }
 
-    const user = await User.create(userData);
+    const user = await User.create({ ...userData, name, email, password });
     const createdUser = await User.findById(user._id).select("-password");
 
     if (!createdUser) {
@@ -21,7 +28,13 @@ class AuthService {
   }
 
   async loginUser(email, password) {
-    const user = await User.findOne({ email });
+    const normalizedEmail = email?.trim()?.toLowerCase();
+
+    if (!normalizedEmail || !password) {
+      throw new ApiError(400, "email and password are required");
+    }
+
+    const user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
       throw new ApiError(404, "User does not exist");

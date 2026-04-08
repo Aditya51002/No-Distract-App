@@ -2,9 +2,15 @@ const asyncHandler = require("../utils/asyncHandler");
 const ApiResponse = require("../utils/apiResponse");
 const focusLockService = require("../services/focusLock.service");
 const User = require("../models/user.model");
+const ApiError = require("../utils/apiError");
 
 // Blocked Apps
 const addApp = asyncHandler(async (req, res) => {
+    const { appName, packageName } = req.body;
+    if (!appName || !packageName) {
+        throw new ApiError(400, "appName and packageName are required");
+    }
+
     const app = await focusLockService.addBlockedApp(req.user._id, req.body);
     return res.status(201).json(new ApiResponse(201, app, "App blocked successfully"));
 });
@@ -32,6 +38,11 @@ const updateConfig = asyncHandler(async (req, res) => {
 
 // Focus Sessions
 const startSession = asyncHandler(async (req, res) => {
+    const { duration } = req.body;
+    if (!Number.isFinite(duration) || duration <= 0) {
+        throw new ApiError(400, "duration must be a positive number");
+    }
+
     const session = await focusLockService.startSession(req.user._id, req.body);
     return res.status(201).json(new ApiResponse(201, session, "Session started"));
 });
@@ -77,13 +88,28 @@ const getChallenges = asyncHandler(async (req, res) => {
 
 // Reminders
 const getReminders = asyncHandler(async (req, res) => {
-    const reminders = await focusLockService.manageReminder(req.user._id, null); // Simplified
+    const reminders = await focusLockService.getReminders(req.user._id);
     return res.status(200).json(new ApiResponse(200, reminders, "Reminders fetched"));
 });
 
 const createReminder = asyncHandler(async (req, res) => {
+    const { title, reminderTime } = req.body;
+    if (!title || !reminderTime) {
+        throw new ApiError(400, "title and reminderTime are required");
+    }
+
     const reminder = await focusLockService.manageReminder(req.user._id, req.body);
     return res.status(201).json(new ApiResponse(201, reminder, "Reminder created"));
+});
+
+const updateReminder = asyncHandler(async (req, res) => {
+    const reminder = await focusLockService.manageReminder(req.user._id, req.body, req.params.id);
+    return res.status(200).json(new ApiResponse(200, reminder, "Reminder updated"));
+});
+
+const deleteReminder = asyncHandler(async (req, res) => {
+    await focusLockService.deleteReminder(req.user._id, req.params.id);
+    return res.status(200).json(new ApiResponse(200, null, "Reminder deleted"));
 });
 
 module.exports = {
@@ -101,5 +127,7 @@ module.exports = {
     getRewards,
     getChallenges,
     getReminders,
-    createReminder
+    createReminder,
+    updateReminder,
+    deleteReminder
 };

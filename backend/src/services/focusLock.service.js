@@ -7,6 +7,7 @@ const Reminder = require("../models/reminder.model");
 const Preference = require("../models/preference.model");
 const User = require("../models/user.model");
 const ApiError = require("../utils/apiError");
+const mongoose = require("mongoose");
 
 class FocusLockService {
   // Blocked Apps
@@ -29,6 +30,10 @@ class FocusLockService {
   }
 
   async deleteBlockedApp(userId, appId) {
+    if (!mongoose.Types.ObjectId.isValid(appId)) {
+      throw new ApiError(400, "Invalid app id");
+    }
+
     const app = await BlockedApp.findOneAndDelete({ _id: appId, userId });
     if (!app) throw new ApiError(404, "App not found or unauthorized");
     return app;
@@ -52,22 +57,31 @@ class FocusLockService {
   }
 
   async completeSession(userId, sessionId, distractionCount) {
+    if (!mongoose.Types.ObjectId.isValid(sessionId)) {
+      throw new ApiError(400, "Invalid session id");
+    }
+
+    const safeDistractionCount = Number.isFinite(distractionCount)
+      ? Math.max(0, distractionCount)
+      : 0;
+
     const session = await FocusSession.findOneAndUpdate(
       { _id: sessionId, userId },
-      { 
-        $set: { 
-          completed: true, 
-          endedAt: new Date(), 
-          distractionAttempts: distractionCount 
-        } 
+      {
+        $set: {
+          completed: true,
+          endedAt: new Date(),
+          distractionAttempts: safeDistractionCount,
+        },
       },
       { new: true }
     );
 
-    if (session) {
-      await this.updateUserStats(userId, session.duration, true);
+    if (!session) {
+      throw new ApiError(404, "Session not found or unauthorized");
     }
 
+    await this.updateUserStats(userId, session.duration, true);
     return session;
   }
 
@@ -180,13 +194,41 @@ class FocusLockService {
   // Reminders
   async manageReminder(userId, reminderData, reminderId = null) {
     if (reminderId) {
-      return await Reminder.findOneAndUpdate(
+      if (!mongoose.Types.ObjectId.isValid(reminderId)) {
+        throw new ApiError(400, "Invalid reminder id");
+      }
+
+      const updated = await Reminder.findOneAndUpdate(
         { _id: reminderId, userId },
         { $set: reminderData },
         { new: true }
       );
+
+      if (!updated) {
+        throw new ApiError(404, "Reminder not found or unauthorized");
+      }
+
+      return updated;
     }
+
     return await Reminder.create({ ...reminderData, userId });
+  }
+
+  async getReminders(userId) {
+    return await Reminder.find({ userId }).sort({ createdAt: -1 });
+  }
+
+  async deleteReminder(userId, reminderId) {
+    if (!mongoose.Types.ObjectId.isValid(reminderId)) {
+      throw new ApiError(400, "Invalid reminder id");
+    }
+
+    const deleted = await Reminder.findOneAndDelete({ _id: reminderId, userId });
+    if (!deleted) {
+      throw new ApiError(404, "Reminder not found or unauthorized");
+    }
+
+    return deleted;
   }
 
   // Insights Placeholder

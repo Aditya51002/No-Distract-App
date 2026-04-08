@@ -4,26 +4,28 @@ const ApiError = require("../utils/apiError");
 const asyncHandler = require("../utils/asyncHandler");
 
 const verifyJWT = asyncHandler(async (req, _, next) => {
-  try {
-    const token = req.header("Authorization")?.replace("Bearer ", "");
+  const authHeader = req.header("Authorization") || "";
+  const [scheme, token] = authHeader.split(" ");
 
-    if (!token) {
-      throw new ApiError(401, "Unauthorized request");
-    }
-
-    const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
-
-    const user = await User.findById(decodedToken?._id).select("-password");
-
-    if (!user) {
-      throw new ApiError(401, "Invalid Access Token");
-    }
-
-    req.user = user;
-    next();
-  } catch (error) {
-    throw new ApiError(401, error?.message || "Invalid access token");
+  if (scheme !== "Bearer" || !token) {
+    throw new ApiError(401, "Missing or invalid Authorization header");
   }
+
+  let decodedToken;
+  try {
+    decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+  } catch (_) {
+    throw new ApiError(401, "Invalid or expired access token");
+  }
+
+  const user = await User.findById(decodedToken?._id).select("-password");
+
+  if (!user) {
+    throw new ApiError(401, "Invalid access token");
+  }
+
+  req.user = user;
+  next();
 });
 
 module.exports = verifyJWT;
