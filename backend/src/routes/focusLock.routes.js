@@ -16,7 +16,8 @@ const {
     getReminders,
     createReminder,
     updateReminder,
-    deleteReminder
+    deleteReminder,
+    getAiSuggestion
 } = require("../controllers/focusLock.controller");
 const verifyJWT = require("../middlewares/auth.middleware");
 
@@ -49,5 +50,8 @@ router.route("/challenges").get(getChallenges);
 // Reminders
 router.route("/reminders").get(getReminders).post(createReminder);
 router.route("/reminders/:id").patch(updateReminder).delete(deleteReminder);
+
+// AI Suggestions
+router.get("/ai-suggestion", verifyJWT, getAiSuggestion);
 
 module.exports = router;

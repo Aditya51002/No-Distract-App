@@ -5,8 +5,19 @@ const morgan = require("morgan");
 const compression = require("compression");
 const rateLimit = require("express-rate-limit");
 const ApiError = require("./utils/apiError");
+const passport = require("./config/passport");
+const session = require("express-session");
 
 const app = express();
+
+// Session middleware for OAuth
+app.use(session({
+    secret: process.env.SESSION_SECRET || "focusappsecret",
+    resave: false,
+    saveUninitialized: false,
+}));
+app.use(passport.initialize());
+app.use(passport.session());
 
 const parsedCorsOrigins = (process.env.CORS_ORIGIN || "*")
     .split(",")
